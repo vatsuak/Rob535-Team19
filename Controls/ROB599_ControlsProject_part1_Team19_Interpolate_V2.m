@@ -37,13 +37,14 @@ g    = 9.806;               % Graviational Constant
 dt   = 0.01;                % Time Step
 PredHorizon = 10;           % Prediction Horizon Size
 
-% interp_size = 4;
-% bx = [interp(bl(1,:),interp_size);interp(bl(2,:),interp_size)];
-% by = [interp(br(1,:),interp_size);interp(br(2,:),interp_size)];
-% nsteps = size(bx,2);
+interp_size = 10;
+bl = [interp(bl(1,:),interp_size);interp(bl(2,:),interp_size)];
+br = [interp(br(1,:),interp_size);interp(br(2,:),interp_size)];
+theta = interp(theta,interp_size);
+nsteps = size(bl,2);
 % T = 0.0:dt:nsteps*dt;
 
-nsteps  = size(bl,2);
+% nsteps  = size(bl,2);
 nstates = 6;
 ninputs = 2;
 

@@ -12,10 +12,17 @@ br = TestTrack.br;       % Right Boundaries
 cline = TestTrack.cline; % Center Line
 theta = TestTrack.theta; % Center Line's Orientation
 
-hold on
+load('Y0.mat');
+
+trajec = Y0';
+theta_traject = trajec(5,:);
+trajec = trajec([1,3],:);
+
 plot(bl(1,:),bl(2,:),'r')
 hold on
 plot(br(1,:),br(2,:),'r')
+hold on
+plot(trajec(1,:),trajec(2,:),'x')
 %% Initialize Constants
 
 m    = 1400;                % Mass of Car
@@ -37,13 +44,25 @@ g    = 9.806;               % Graviational Constant
 dt   = 0.01;                % Time Step
 PredHorizon = 10;           % Prediction Horizon Size
 
-% interp_size = 4;
-% bx = [interp(bl(1,:),interp_size);interp(bl(2,:),interp_size)];
-% by = [interp(br(1,:),interp_size);interp(br(2,:),interp_size)];
-% nsteps = size(bx,2);
+interp_size = 1;
+bl = [interp(bl(1,:),interp_size);interp(bl(2,:),interp_size)];
+br = [interp(br(1,:),interp_size);interp(br(2,:),interp_size)];
+trajec = [interp(trajec(1,:),interp_size);interp(trajec(2,:),interp_size)];
+theta_traject = interp(theta_traject,interp_size);
+theta = interp(theta,interp_size);
+% cline = [interp(cline(1,:),interp_size);interp(cline(2,:),interp_size)];
+
+hold on
+plot(bl(1,:),bl(2,:),'g')
+hold on
+plot(br(1,:),br(2,:),'g')
+hold on
+plot(trajec(1,:),trajec(2,:),'b')
+
+% nsteps = size(bl,2);
 % T = 0.0:dt:nsteps*dt;
 
-nsteps  = size(bl,2);
+% nsteps  = size(bl,2);
 nstates = 6;
 ninputs = 2;
 
@@ -55,6 +74,7 @@ u0   =   5.0;
 y0   =  -176;
 v0   =   0.0;
 psi0 =   2.0;
+% psi0 =   theta(1);
 r0   =   0.0;
 
 z0 = [x0, u0, y0, v0, psi0, r0];
@@ -79,6 +99,14 @@ sysNL = @(i,Y)[          Y(2)*cos(Y(5))-Y(4)*sin(Y(5));
                     1/m*(F_yf(Y)*cos(Uin(2,j+1))+F_yr)-Y(2)*Y(6);
                                         Y(6);
                           1/I_z*(a*F_yf(Y)*cos(Uin(2,j+1))-b*F_yr)];
+%% PATH SEGMENT SELECTION
+%295
+
+nsteps = 9;
+bl = bl(:,1:nsteps);
+br = br(:,1:nsteps);
+theta = theta(:,1:nsteps) ;%,theta_traject(:, 20:nsteps)]
+trajec = trajec(:,1:nsteps);
                       
 %% REF PATH GENERATION
 
@@ -94,7 +122,8 @@ options = optimoptions('fmincon','SpecifyConstraintGradient',true,...
 % x0=zeros(1,5*nsteps-2); ??
 X0 = [repmat([x0,u0,y0,v0,psi0,r0],1,nsteps), repmat([0,0],1,nsteps-1)];
 
-cf=@costfun;
+% cf=@costfun;
+cf=@costfun_segmt;
 nc=@nonlcon;
 
 z=fmincon(cf,X0,[],[],[],[],lb',ub',nc,options);
@@ -125,9 +154,9 @@ lb = [];
 
 for i = 1:nsteps
     
-ub = [ub,[highbounds(1,i), +inf,highbounds(2,i), +inf, theta(i)+pi/2, +inf]];
+ub = [ub,[highbounds(1,i), +inf,highbounds(2,i), +inf, theta(i)+pi/3, +inf]];
 
-lb = [lb,[lowbounds(1,i), -inf, lowbounds(2,i), -inf, theta(i)-pi/2, -inf]];
+lb = [lb,[lowbounds(1,i), -inf, lowbounds(2,i), -inf, theta(i)-pi/3, -inf]];
 
 end
 
