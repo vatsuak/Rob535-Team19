@@ -44,10 +44,9 @@ g    = 9.806;               % Graviational Constant
 dt   = 0.01;                % Time Step
 PredHorizon = 10;           % Prediction Horizon Size
 
-interp_size = 100;
+interp_size = 50;
 bl = [interp(bl(1,:),interp_size);interp(bl(2,:),interp_size)];
 br = [interp(br(1,:),interp_size);interp(br(2,:),interp_size)];
-cline = [interp(cline(1,:),interp_size);interp(cline(2,:),interp_size)];
 trajec = [interp(trajec(1,:),interp_size);interp(trajec(2,:),interp_size)];
 theta_traject = interp(theta_traject,interp_size);
 theta = interp(theta,interp_size);
@@ -101,12 +100,11 @@ sysNL = @(i,Y)[          Y(2)*cos(Y(5))-Y(4)*sin(Y(5));
                                         Y(6);
                           1/I_z*(a*F_yf(Y)*cos(Uin(2,j+1))-b*F_yr)];
 %% PATH SEGMENT SELECTION
-%9*interp
+%295
 
-nsteps = 900;
+nsteps = 9;
 bl = bl(:,1:nsteps);
 br = br(:,1:nsteps);
-cline = cline(:,1:nsteps);
 theta = theta(:,1:nsteps) ;%,theta_traject(:, 20:nsteps)]
 trajec = trajec(:,1:nsteps);
                       
@@ -121,16 +119,10 @@ highbounds = max(bl,br);
 options = optimoptions('fmincon','SpecifyConstraintGradient',true,...
                        'SpecifyObjectiveGradient',true) ;
                    
-% x0=zeros(1,5*nsteps-2); ?? 
-endpoint = [245.3695, -56.4002];
-xrefs = x0:(endpoint(1)-x0)/(nsteps-1):endpoint(1);
-yrefs = y0:(endpoint(2)-y0)/(nsteps-1):endpoint(2);
-
-states0 = [xrefs;u0*ones(1,nsteps);yrefs;v0*ones(1,nsteps);theta;r0*ones(1,nsteps)];
-% states0(1:6:6*50) = x0;
-% states0(3:6:6*50+2) = y0;
-states0 = reshape(states0,1,nsteps*nstates);
-X0 = [states0, repmat([1000.0,0.0],1,nsteps-1)];
+% x0=zeros(1,5*nsteps-2); ??
+states0 = repmat([x0,u0,y0,v0,psi0,r0],1,nsteps);
+states0(1)
+X0 = [repmat([x0,u0,y0,v0,psi0,r0],1,nsteps), repmat([0.0,1000],1,nsteps-1)];
 
 % cf=@costfun;
 cf=@costfun_segmt;
@@ -141,12 +133,6 @@ z=fmincon(cf,X0,[],[],[],[],lb',ub',nc,options);
 Y0=reshape(z(1:6*nsteps),6,nsteps)';
 U=reshape(z(6*nsteps+1:end),2,nsteps-1);
 
-
-plot(bl(1,:),bl(2,:),'g')
-hold on
-plot(br(1,:),br(2,:),'g')
-hold on
-plot(Y0(:,1),Y0(:,3),'b')
 
 %% REF PATH FOLLOWING WITHOUT OBSTACLES
 

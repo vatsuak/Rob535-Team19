@@ -6,13 +6,15 @@ function [J, dJ] = costfun_segmt(z)
 
     zx = z(1:6*nsteps) ;
     zu = z(6*nsteps+1:end) ;
-    R=eye(2*nsteps-2);
+%     R=eye(2*nsteps-2);
+    R = zeros(2*nsteps-2);
 
     nom=zeros(6*nsteps,1) ;
     nom(1:6:6*nsteps) =  245.3695 ;
     nom(3:6:6*nsteps+2) = -56.4002 ;
     nom(5:6:6*nsteps+4) = 1.8900 ;
-    Q=eye(6*nsteps);
+    %Q=eye(6*nsteps);
+    Q = diag(repmat([1/10,0,1/10,0,1,0],1,nsteps));
 
     J = zu'*R*zu+(zx-nom)'*Q*(zx-nom) ;
     dJ = [2*Q*zx-2*Q*nom;...
