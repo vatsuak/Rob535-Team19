@@ -80,7 +80,7 @@ plot(Yref(:,1),Yref(:,3),'b')
 
 %% Take a segment of ref trajectory
 
-nsteps = 800;
+nsteps = 200;
 
 
 close all
