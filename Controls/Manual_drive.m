@@ -82,7 +82,7 @@ U = [repmat([-0.04, 2400],100,1);
 
  
 %     repmat([-0.125, 1700],300,1);
-%     repmat([-0.05, 1900],100,1);
+%     repmat([-0.05, 1900],100,1);d 
 %     repmat([+0.2, 1900],200,1);
 %     repmat([+0.2, 1600],100,1);];
 
@@ -93,6 +93,8 @@ U = [repmat([-0.04, 2400],100,1);
 %     repmat([-0.1, 500],400,1);];
 
 [Y, t] = forwardIntegrateControlInput(U,z0); %  U nx2 , z0 1x6
+Uref = U;
+Yref = Y;
 
 plot(bl(1,:),bl(2,:),'r')
 hold on
