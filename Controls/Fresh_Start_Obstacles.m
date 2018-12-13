@@ -2,7 +2,7 @@
 %% Clear For Fresh Run. ! Delete Section Before Submission !
 
 clear
-close all
+close all 
 clc
 
 %% Load Data
@@ -10,9 +10,17 @@ clc
 load ('TestTrack.mat');
 load('Uref.mat');
 load('Yref.mat');
+load('U_left.mat');
+load('Y_left.mat');
+load('U_right.mat');
+load('Y_right.mat');
 
-Nobs = 5;
+
+
+Nobs = 3; %based on Q1 results
 Xobs = generateRandomObstacles(Nobs, TestTrack);
+obs_bound = zeros(Nobs,3);
+
 
 % info = getTrajectoryInfo(Yref,Uref,Xobs)
 
@@ -28,112 +36,67 @@ plot(bl(1,:),bl(2,:),'r')
 hold on
 plot(br(1,:),br(2,:),'r')
 hold on
-plot(Yref(:,1),Yref(:,3),'b')
+plot(Y_left(:,1),Y_left(:,3),'b')
 hold on
-plot(cline(1,:),cline(2,:),'g')
+plot(Y_right(:,1),Y_right(:,3),'b')
+hold on
+plot(cline(1,:),cline(2,:),'--g')
 hold on
 
 for i = 1:length(Xobs)
     tempx = Xobs{i};
+    obs_bound(i,:) = [mean(tempx), norm(mean(tempx)-tempx(1,:))];
     tempx = [tempx;tempx(1,:)];
+    
     hold on
     plot(tempx(:,1),tempx(:,2),'g')
-end
-
-
-
-%% Interpolate borders and centerline to match size of Yl
-
-interp_size = ceil(size(Yref,1)/size(bl,2));  % ceil(x) rounds up to the nearest low integer
-
-b_l = [interp(bl(1,:),interp_size);interp(bl(2,:),interp_size)];
-b_r = [interp(br(1,:),interp_size);interp(br(2,:),interp_size)];
-c_line = [interp(cline(1,:),interp_size);interp(cline(2,:),interp_size)];
-
-%====Check====
-
-close all
-plot(b_l(1,:),b_l(2,:),'r')
-hold on
-plot(b_r(1,:),b_r(2,:),'r')
-hold on
-plot(Yref(:,1),Yref(:,3),'b')
-
-%=============
-
-%% Build bounds vector based on the nearest matching coordinates from centerline
-
-err = 0.1; % find nearest point to the 0.05
-
-
-bl_scaled = zeros(2,size(Yref,1));
-br_scaled = zeros(2,size(Yref,1));
-cline_scaled = zeros(2,size(Yref,1));
-
-for i = 1:1:size(Yref,1)
-    
-    %indx = find( (abs(c_line(1,:) - Yref(i,1))<= err).* (abs(c_line(2,:) - Yref(i,3))<= err),1)
-    [~,indx] = min((c_line(1,:) - Yref(i,1)).^2 + (c_line(2,:) - Yref(i,3)).^2);
-    
-    bl_scaled(:,i) = b_l(:,indx);
-    br_scaled(:,i) = b_r(:,indx);
-    cline_scaled(:,i) = c_line(:,indx);
+    hold on
+    circle(obs_bound(i,1),obs_bound(i,2),obs_bound(i,3))
     
     
 end
 
+%% Ref Path Selection based on Obstacles
 
-%====Check====
+endtrack = false;
+left_track = true;
+current_track = Y_left;
+prev_track = Y_right;
+final_track = zeros(size(Y_right));
+search_horizon = 500;  %look forward 500 steps
+indx = 1;
+counter = 1;
 
-close all
-plot(bl_scaled(1,:),bl_scaled(2,:),'r')
+while (~endtrack)
+    if (indx > size(current_track,1) - search_horizon)
+        search_horizon = size(current_track,1) - (indx);
+        endtrack = true;
+    end
+    for i = 1:Nobs
+        flip = ~isempty(find(vecnorm(current_track(indx:indx+search_horizon, [1,3] ) - obs_bound(i,[1,2]),2,2) < obs_bound(i,3)));
+        if flip
+            disp('Flipped Lanes !')
+            left_track = ~left_track;
+            [~,indx] = min((prev_track(:,1) - current_track(indx,1)).^2 + (prev_track(:,3) - current_track(indx,3)).^2);
+            break
+        end
+    end
+    
+    if left_track
+        current_track = Y_left;
+        prev_track = Y_right;
+        final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
+    else
+        current_track = Y_right;
+        prev_track = Y_left;
+        final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
+    end
+    counter = counter+1;
+    indx = indx + search_horizon;
+end
+final_track = final_track(1:1 + 500*(counter-2) + search_horizon, :);
 hold on
-plot(br_scaled(1,:),br_scaled(2,:),'r')
-hold on
-plot(Yref(:,1),Yref(:,3),'b')
-
-%=============
-
-%% Take a segment of ref trajectory
-
-nsteps = 800;
-
-
-close all
-plot(bl_scaled(1,1:nsteps),bl_scaled(2,1:nsteps),'r')
-hold on
-plot(br_scaled(1,1:nsteps),br_scaled(2,1:nsteps),'r')
-hold on
-plot(Yref(1:nsteps,1),Yref(1:nsteps,3),'b')
-
-%% Initial Conditions Vector
-
-X0 = [reshape(Yref(1:nsteps,:)',1,6*nsteps), reshape(Uref(1:nsteps-1,:)',1,2*(nsteps-1))];
-
-                      
-%% Fmincon b GENERATION
-
-lowbounds = min(bl_scaled(:,1:nsteps),br_scaled(:,1:nsteps));
-highbounds = max(bl_scaled(:,1:nsteps),br_scaled(:,1:nsteps));
-
-[lb,ub]=bound_cons(nsteps,Yref(1:nsteps,5)' ,lowbounds, highbounds);
-
-%% Fmincon Trajcetory GENERATION
-
-
-options = optimoptions('fmincon','SpecifyConstraintGradient',true,...
-                       'SpecifyObjectiveGradient',true) ;
-
-cf=@costfun_fresh;
-nc=@nonlcon;
-
-z=fmincon(cf,X0,[],[],[],[],lb',ub',nc,options);
-
-Y_fcon = reshape(z(1:6*nsteps),6,nsteps)';
-U_fcon = reshape(z(6*nsteps+1:end),2,nsteps-1);
-
-
-%% REF PATH FOLLOWING WITHOUT OBSTACLES
+plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 
 %% Functions Imported from HW
 
@@ -167,4 +130,15 @@ end
 ub = [ub,repmat([2500,0.5],1,nsteps-1) ]';
 lb = [lb,repmat([-5000,-0.5],1,nsteps-1) ]';
 
+end
+
+function circle(x,y,r)
+%x and y are the coordinates of the center of the circle
+%r is the radius of the circle
+%0.01 is the angle step, bigger values will draw the circle faster but
+%you might notice imperfections (not very smooth)
+ang=0:0.01:2*pi; 
+xp=r*cos(ang);
+yp=r*sin(ang);
+plot(x+xp,y+yp,'k','linewidth',3);
 end
