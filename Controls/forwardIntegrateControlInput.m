@@ -57,6 +57,9 @@ g=9.806;
 delta_f=interp1(T,U(:,1),t,'previous','extrap');
 F_x=interp1(T,U(:,2),t,'previous','extrap');
 
+% delta_f = U(:,1);
+% F_x = U(:,2);
+
 %slip angle functions in degrees
 a_f=rad2deg(delta_f-atan2(x(4)+a*x(6),x(2)));
 a_r=rad2deg(-atan2((x(4)-b*x(6)),x(2)));
