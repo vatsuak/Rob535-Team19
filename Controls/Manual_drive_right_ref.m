@@ -90,8 +90,8 @@ U = [repmat([-0.03, 2000],200,1);
 
 
 [Y, t] = forwardIntegrateControlInput(U,z0); %  U nx2 , z0 1x6
-Uref = U;
-Yref = Y;
+U_right = U;
+Y_right = Y;
 
 plot(bl(1,:),bl(2,:),'r')
 hold on

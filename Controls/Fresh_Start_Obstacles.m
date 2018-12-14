@@ -16,7 +16,6 @@ load('U_right.mat');
 load('Y_right.mat');
 
 
-
 Nobs = 3; %based on Q1 results
 Xobs = generateRandomObstacles(Nobs, TestTrack);
 obs_bound = zeros(Nobs,3);
@@ -44,8 +43,9 @@ plot(cline(1,:),cline(2,:),'--g')
 hold on
 
 for i = 1:length(Xobs)
+    
     tempx = Xobs{i};
-    obs_bound(i,:) = [mean(tempx), norm(mean(tempx)-tempx(1,:))];
+    obs_bound(i,:) = [mean(tempx), norm(mean(tempx)-tempx(1,:))+0.5];
     tempx = [tempx;tempx(1,:)];
     
     hold on
@@ -59,13 +59,17 @@ end
 %% Ref Path Selection based on Obstacles
 
 endtrack = false;
-left_track = true;
-current_track = Y_left;
-prev_track = Y_right;
+left_track = false;
+current_track = Y_right;
+current_input = U_right;
+prev_track = Y_left;
+prev_input = U_left;
 final_track = zeros(size(Y_right));
+final_input = zeros(size(U_right));
 search_horizon = 500;  %look forward 500 steps
 indx = 1;
 counter = 1;
+choose_right = false;
 
 while (~endtrack)
     if (indx > size(current_track,1) - search_horizon)
@@ -77,6 +81,9 @@ while (~endtrack)
         if flip
             disp('Flipped Lanes !')
             left_track = ~left_track;
+            if(i==1)
+                choose_right = false;
+            end
             [~,indx] = min((prev_track(:,1) - current_track(indx,1)).^2 + (prev_track(:,3) - current_track(indx,3)).^2);
             break
         end
@@ -84,52 +91,85 @@ while (~endtrack)
     
     if left_track
         current_track = Y_left;
+        current_input = U_left;
         prev_track = Y_right;
+        prev_input = U_right;
         final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
+        final_input(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_input(indx:indx +search_horizon,:);
     else
         current_track = Y_right;
         prev_track = Y_left;
+        current_input = U_right;
+        prev_input = U_left;
         final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
+        final_input(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_input(indx:indx +search_horizon,:);
     end
     counter = counter+1;
     indx = indx + search_horizon;
 end
+
 final_track = final_track(1:1 + 500*(counter-2) + search_horizon, :);
+final_input = final_input(1:1 + 500*(counter-2) + search_horizon, :);
+
 hold on
 plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 
+%% Control Input to drive the car
+
+[Ufinal, Yfinal]=get_inputs_pid(final_track,final_input);
+
+%% Plot final track
+
+% Yfw_int = forwardIntegrateControlInput(Ufinal);
+
+hold on
+plot(Yfinal(:,1),Yfinal(:,3),'r','linewidth',1.5)
+hold on
+% plot(Yfw_int(:,1),Yfw_int(:,3),'g','linewidth',1.5)
+
 %% Functions Imported from HW
 
-function [lb,ub]=bound_cons(nsteps,theta ,lowbounds, highbounds) %,input_range
-
-% ub = zeros(1,6*nsteps);
-% lb = zeros(1,6*nsteps);
-% 
-% for i = 1:nsteps
-%     
-% ub(6*i-5:6*i) = [highbounds(1,i), +inf,highbounds(2,i), +inf, theta(i)+pi/2, +inf];
-% 
-% lb(6*i-5:6*i) = [lowbounds(1,i), -inf, lowbounds(2,i), -inf, theta(i)-pi/2, -inf];
-% 
-% end
-
-ub = [];
-lb = [];
-
-for i = 1:nsteps
+function [Ufinal , Yfinal]=get_inputs_pid(final_track,final_input)
     
-ub = [ub,[highbounds(1,i), +inf,highbounds(2,i), +inf, theta(i)+pi/2, +inf]];
+    segmentsize = 11000;
+    Kp = [0,0,0,0,0.02,0;...
+          50,0,50,0,0,0];
+      
+    Kd = [0,0,0,0,20.0,0;...
+    100.0,0,100.0,0,0,0];
 
-lb = [lb,[lowbounds(1,i), -inf, lowbounds(2,i), -inf, theta(i)-pi/2, -inf]];
-
-end
-
-% size(ub)
-% size(lb)
-
-ub = [ub,repmat([2500,0.5],1,nsteps-1) ]';
-lb = [lb,repmat([-5000,-0.5],1,nsteps-1) ]';
-
+    Yfinal = zeros(segmentsize, 6);
+    Ufinal = zeros(segmentsize, 2);
+    Yfinal(1,:) = final_track(1,:);
+    dy_prev = 0;
+    
+    for i = 2:size(Yfinal,1)
+        
+        
+        Uref = final_input(i,:);
+        
+        dy = Yfinal(i-1,:) - final_track(i,:);
+        dd = (dy - dy_prev)/0.01;
+        
+        dy_prev = dy;
+        
+%         A = statepart_hand(Yref, Uref);
+%         B = inputpart_hand(Yref, Uref);
+        
+        orient = final_track(i,5) - atan2(-dy(3),-dy(1)+0.001)
+%         if abs(orient) > 1.0
+%             final_track(i,:)
+%             e
+%         end
+        du = -(Kp*dy'+Kd*dd');  %+ Kp(1,5)*atan2(dy(3),dy(1)) %- [Kp(1,5)*orient; 0]
+        u = Uref + du';  
+        Ufinal(i-1,:) = u;
+        Ytemp = forwardIntegrateControlInput([u;u], Yfinal(i-1,:));
+        Yfinal(i,:) = Ytemp(end,:);
+        
+    end
+    
+    disp('DONE !')
 end
 
 function circle(x,y,r)
@@ -140,5 +180,5 @@ function circle(x,y,r)
 ang=0:0.01:2*pi; 
 xp=r*cos(ang);
 yp=r*sin(ang);
-plot(x+xp,y+yp,'k','linewidth',3);
+plot(x+xp,y+yp, 'k' ,'linewidth',3);
 end
