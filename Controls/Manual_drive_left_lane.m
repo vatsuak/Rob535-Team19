@@ -104,12 +104,16 @@ U = [repmat([0.02, 2400],138,1);
 [Y, t] = forwardIntegrateControlInput(U,z0); %  U nx2 , z0 1x6
 U_left = U;
 Y_left = Y;
+Uref = U;
+Yref = Y;
 
 plot(bl(1,:),bl(2,:),'r')
 hold on
 plot(br(1,:),br(2,:),'r')
 hold on
 plot(Y(:,1), Y(:,3),'b')
+hold on
+plot((cline(1,:)+bl(1,:))/2,(cline(2,:)+bl(2,:))/2,'r')
 
 
 quiver(Y(end,1), Y(end,3),1*cos(Y(end,5)),1*sin(Y(end,5)),Y(end,2),'linewidth',3,'color','g')
