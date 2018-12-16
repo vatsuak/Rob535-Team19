@@ -102,6 +102,8 @@ U = [repmat([0.02, 2400],138,1);
 
 
 [Y, t] = forwardIntegrateControlInput(U,z0); %  U nx2 , z0 1x6
+U_left = U;
+Y_left = Y;
 Uref = U;
 Yref = Y;
 
