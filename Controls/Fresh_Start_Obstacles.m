@@ -6,7 +6,7 @@ close all
 clc
 
 %% Load Data
-
+figure(1)
 load ('TestTrack.mat');
 load('Uref.mat');
 load('Yref.mat');
@@ -56,73 +56,73 @@ for i = 1:length(Xobs)
     
 end
 
-%% Ref Path Selection based on Obstacles
-
-endtrack = false;
-left_track = false;
-current_track = Y_right;
-current_input = U_right;
-prev_track = Y_left;
-prev_input = U_left;
-final_track = zeros(size(Y_right));
-final_input = zeros(size(U_right));
-search_horizon = 500;  %look forward 500 steps
-indx = 1;
-counter = 1;
-choose_right = false;
-
-while (~endtrack)
-    if (indx > size(current_track,1) - search_horizon)
-        search_horizon = size(current_track,1) - (indx);
-        endtrack = true;
-    end
-    for i = 1:Nobs
-        flip = ~isempty(find(vecnorm(current_track(indx:indx+search_horizon, [1,3] ) - obs_bound(i,[1,2]),2,2) < obs_bound(i,3)));
-        if flip
-            disp('Flipped Lanes !')
-            left_track = ~left_track;
-            if(i==1)
-                choose_right = false;
-            end
-            [~,indx] = min((prev_track(:,1) - current_track(indx,1)).^2 + (prev_track(:,3) - current_track(indx,3)).^2);
-            break
-        end
-    end
-    
-    if left_track
-        current_track = Y_left;
-        current_input = U_left;
-        prev_track = Y_right;
-        prev_input = U_right;
-        final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
-        final_input(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_input(indx:indx +search_horizon,:);
-    else
-        current_track = Y_right;
-        prev_track = Y_left;
-        current_input = U_right;
-        prev_input = U_left;
-        final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
-        final_input(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_input(indx:indx +search_horizon,:);
-    end
-    counter = counter+1;
-    indx = indx + search_horizon;
-end
-
-final_track = final_track(1:1 + 500*(counter-2) + search_horizon, :);
-final_input = final_input(1:1 + 500*(counter-2) + search_horizon, :);
-
-hold on
-plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
+% %% Ref Path Selection based on Obstacles
+% 
+% endtrack = false;
+% left_track = false;
+% current_track = Y_right;
+% current_input = U_right;
+% prev_track = Y_left;
+% prev_input = U_left;
+% final_track = zeros(size(Y_right));
+% final_input = zeros(size(U_right));
+% search_horizon = 500;  %look forward 500 steps
+% indx = 1;
+% counter = 1;
+% choose_right = false;
+% 
+% while (~endtrack)
+%     if (indx > size(current_track,1) - search_horizon)
+%         search_horizon = size(current_track,1) - (indx);
+%         endtrack = true;
+%     end
+%     for i = 1:Nobs
+%         flip = ~isempty(find(vecnorm(current_track(indx:indx+search_horizon, [1,3] ) - obs_bound(i,[1,2]),2,2) < obs_bound(i,3)));
+%         if flip
+%             disp('Flipped Lanes !')
+%             left_track = ~left_track;
+%             if(i==1)
+%                 choose_right = false;
+%             end
+%             [~,indx] = min((prev_track(:,1) - current_track(indx,1)).^2 + (prev_track(:,3) - current_track(indx,3)).^2);
+%             break
+%         end
+%     end
+%     
+%     if left_track
+%         current_track = Y_left;
+%         current_input = U_left;
+%         prev_track = Y_right;
+%         prev_input = U_right;
+%         final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
+%         final_input(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_input(indx:indx +search_horizon,:);
+%     else
+%         current_track = Y_right;
+%         prev_track = Y_left;
+%         current_input = U_right;
+%         prev_input = U_left;
+%         final_track(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_track(indx:indx +search_horizon,:);
+%         final_input(1+ 500*(counter-1): 1 + 500*(counter-1) + search_horizon,:) = current_input(indx:indx +search_horizon,:);
+%     end
+%     counter = counter+1;
+%     indx = indx + search_horizon;
+% end
+% 
+% final_track = final_track(1:1 + 500*(counter-2) + search_horizon, :);
+% final_input = final_input(1:1 + 500*(counter-2) + search_horizon, :);
+% 
+% hold on
+% plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 
 %% Ref Path Selection based on Obstacles - 2
 
 
-clc
 Lchanges = 0;
 backsteps_curr = 500;
 backsteps_new = 250;
 npts = 50;
-pt = zeros(npts+2,6);
+pt = zeros(npts,6);
+ptu = zeros(npts,2);
 current_track = Y_left;
 current_input = U_left;
 
@@ -147,12 +147,13 @@ for i = 1:Nobs
             pt1u = current_input(indx1(i)-backsteps_curr,:);
             pt2 = prev_track(indx2(i)-backsteps_new,:);
             pt2u = current_input(indx1(i)-backsteps_curr,:);
-        for j = 1:6
-            pt(:,j) = linspace(pt1(j),pt2(j),npts+2);
-            
+        for j = [1 2 3 4 6]
+            pt(:,j) = linspace(pt1(j),pt2(j),npts);
+           
         end
+            pt(1:npts,4) = atan2(pt2(3)-pt1(3),pt2(1)-pt1(1));
         for j = 1:2
-            ptu(:,j) = linspace(pt1u(j),pt2u(j),npts+2);
+            ptu(:,j) = linspace(pt1u(j),pt2u(j),npts);
         end
         current_track = ([current_track(1:indx1(i)-backsteps_curr,:);pt;prev_track(indx2(i)-backsteps_new:end,:)]);
         current_input = [current_input(1:indx1(i)-backsteps_curr,:); ptu ; prev_input(indx2(i)-backsteps_new:end,:)];
@@ -186,11 +187,11 @@ hold on
 function [Ufinal , Yfinal]=get_inputs_pid(final_track,final_input)
     
     segmentsize = 11000;
-    Kp = [0,0,0,0,0.02,0;...
-          50,0,50,0,0,0];
+    Kp = [0,0,0,0,0.03,0;...
+          10,0,10,0,0,0];
       
-    Kd = [0,0,0,0,20.0,0;...
-    100.0,0,100.0,0,0,0];
+    Kd = [0,0,0,0,4.0,0;...
+    65.0,0,65.0,0,0,0];
 
     Yfinal = zeros(segmentsize, 6);
     Ufinal = zeros(segmentsize, 2);
