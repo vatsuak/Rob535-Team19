@@ -114,6 +114,60 @@ final_input = final_input(1:1 + 500*(counter-2) + search_horizon, :);
 hold on
 plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 
+%% Ref Path Selection based on Obstacles - 2
+
+
+clc
+Lchanges = 0;
+backsteps_curr = 500;
+backsteps_new = 250;
+npts = 50;
+pt = zeros(npts+2,6);
+current_track = Y_left;
+current_input = U_left;
+
+for i = 1:Nobs
+        if rem(Lchanges,2)==1
+            prev_track = Y_left;
+            prev_input = U_left;
+        else 
+            prev_track = Y_right;
+            prev_input = U_right;
+        end
+    
+        obs = Xobs{i};
+        [x1,y1] = (polyxpoly(current_track(:,1),current_track(:,3),obs(:,1),obs(:,2)));
+        if ~isempty([x1,y1])
+            Lchanges = Lchanges + 1;
+            disp('Lane Change!')
+            
+            [~,indx1(i)] = min((x1(1) - current_track(:,1)).^2 + (y1(1) - current_track(:,3)).^2);    
+            [~,indx2(i)] = min((prev_track(:,1) - x1(1)).^2 + (prev_track(:,3) - y1(1)).^2);
+            pt1 = current_track(indx1(i)-backsteps_curr,:);
+            pt1u = current_input(indx1(i)-backsteps_curr,:);
+            pt2 = prev_track(indx2(i)-backsteps_new,:);
+            pt2u = current_input(indx1(i)-backsteps_curr,:);
+        for j = 1:6
+            pt(:,j) = linspace(pt1(j),pt2(j),npts+2);
+            
+        end
+        for j = 1:2
+            ptu(:,j) = linspace(pt1u(j),pt2u(j),npts+2);
+        end
+        current_track = ([current_track(1:indx1(i)-backsteps_curr,:);pt;prev_track(indx2(i)-backsteps_new:end,:)]);
+        current_input = [current_input(1:indx1(i)-backsteps_curr,:); ptu ; prev_input(indx2(i)-backsteps_new:end,:)];
+        end    
+  
+        
+end
+final_track = current_track;
+final_input = current_input;
+
+
+hold on
+plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
+
+
 %% Control Input to drive the car
 
 [Ufinal, Yfinal]=get_inputs_pid(final_track,final_input);
@@ -155,8 +209,8 @@ function [Ufinal , Yfinal]=get_inputs_pid(final_track,final_input)
         
 %         A = statepart_hand(Yref, Uref);
 %         B = inputpart_hand(Yref, Uref);
-        
-        orient = final_track(i,5) - atan2(-dy(3),-dy(1)+0.001)
+%         
+%         orient = final_track(i,5) - atan2(-dy(3),-dy(1)+0.001)
 %         if abs(orient) > 1.0
 %             final_track(i,:)
 %             e
