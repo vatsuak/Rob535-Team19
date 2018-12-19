@@ -5,6 +5,8 @@ clear
 close all 
 clc
 
+
+
 load ('TestTrack.mat');
 load('Uref.mat');
 load('Yref.mat');
@@ -14,7 +16,7 @@ load('U_right.mat');
 load('Y_right.mat');
 
 
-Nobs = 25; %based on Q1 results
+Nobs = 25;
 Xobs = generateRandomObstacles(Nobs, TestTrack);
 obs_bound = zeros(Nobs,3);
 
@@ -110,7 +112,6 @@ end
 %% Ref Path Selection based on Obstacles - 2
 
 
-clc
 Lchanges = 0;
 backsteps_curr = 200;
 backsteps_new = 40;
@@ -175,9 +176,19 @@ plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 
 
 %% Control Input to drive the car
-
+tic
 
 [Ufinal , Yfinal]=waypt_controller(final_track);
+
+toc
+
+
+%% Get Trajectory Info
+% 
+% info = getTrajectoryInfo(Yfinal,Ufinal,Xobs,TestTrack)
+
+
+
 %%
 [~,indx_inpt] = find(Ufinal(:,1) ~= 0);
 length(indx_inpt)
@@ -186,7 +197,7 @@ length(indx_inpt)
 hold on
 plot(intg_Y(:,1),intg_Y(:,3),'g','linewidth',1.5)
 
-% [Ufinal, Yfinal]=get_inputs_pid(final_track,final_input)
+% % [Ufinal, Yfinal]=get_inputs_pid(final_track,final_input)
 % %% Plot final track
 % 
 % % Yfw_int = forwardIntegrateControlInput(Ufinal);
@@ -194,14 +205,13 @@ plot(intg_Y(:,1),intg_Y(:,3),'g','linewidth',1.5)
 % plot(Yfinal(:,1),Yfinal(:,3),'r','linewidth',1.5)
 % % plot(Yfw_int(:,1),Yfw_int(:,3),'g','linewidth',1.5)
 %%
-
-function [Ufinal , Yfinal]=waypt_controller(final_track)
+function [Ufinal , Yfinal] =waypt_controller(final_track)
     
-    segmentsize = 11000*100;
+    inputsize = 100000;
 
 
-    Yfinal = zeros(segmentsize, 6);
-    Ufinal = zeros(segmentsize, 2);
+    Yfinal = zeros(inputsize, 6);
+    Ufinal = zeros(inputsize, 2);
     Yfinal(1,:) = final_track(1,:);
     
     pos_tolerance = 1.0;
@@ -209,7 +219,8 @@ function [Ufinal , Yfinal]=waypt_controller(final_track)
     K_orient = 3.0;
     
     endtrack = false;
-    trgt_indx = 20; 
+    trgt_indx = 20;
+    indx_increment = 100;
     ctrl_indx = 1;
     counter = 1;
     
@@ -237,11 +248,11 @@ function [Ufinal , Yfinal]=waypt_controller(final_track)
         
         if(errpos <=  pos_tolerance)
 %             disp('Achieved Target ! Moving to Next')
-            trgt_indx = trgt_indx + 100;
-            if (trgt_indx>size(final_track,1))
+            if (trgt_indx == size(final_track,1))
                 disp('Successfully Completed Track !')
                 endtrack = true;
             end
+            trgt_indx = min(trgt_indx + indx_increment, size(final_track,1));
         end
         
         
@@ -259,11 +270,14 @@ function [Ufinal , Yfinal]=waypt_controller(final_track)
         Yfinal(ctrl_indx,:) = Ytemp(end,:);
         counter = counter + 1;
         
-        hold on
-        plot(Yfinal(ctrl_indx-1:ctrl_indx,1),Yfinal(ctrl_indx-1:ctrl_indx,3),'g','linewidth',1.5)
-        pause(0.001);
+%         hold on
+%         plot(Yfinal(ctrl_indx-1:ctrl_indx,1),Yfinal(ctrl_indx-1:ctrl_indx,3),'g','linewidth',1.5)
+%         pause(0.001);
         
     end
+    
+    Ufinal = Ufinal(1:ctrl_indx-1,:);
+    Yfinal = Yfinal(1:ctrl_indx-1,:);
     
     disp('DONE !')
 end
