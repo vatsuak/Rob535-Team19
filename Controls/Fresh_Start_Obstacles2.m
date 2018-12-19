@@ -110,28 +110,29 @@ end
 %% Ref Path Selection based on Obstacles - 2
 
 
-
+clc
 Lchanges = 0;
-backsteps_curr = 600;
+backsteps_curr = 500;
 backsteps_new = 250;
-npts = 250;
-pt = zeros(npts,6);
-ptu = zeros(npts,2);
-current_track = Y_right;
-current_input = U_right;
+npts = 50;
+pt = zeros(backsteps_curr-backsteps_new+1,6);
+current_track = Y_left;
+current_input = U_left;
+pts1= zeros(backsteps_curr-backsteps_new+1,6);
+pts2 = zeros(backsteps_curr-backsteps_new+1,6);
 
-
-for i = 1
+for i = 1:Nobs
        if rem(Lchanges,2)==1
             prev_track = Y_left;
             prev_input = U_left;
         else 
             prev_track = Y_right;
             prev_input = U_right;
-        end
+       end
     
-        obs = Xobs{i};
-        [x1,y1] = (polyxpoly(current_track(:,1),current_track(:,3),obs(:,1),obs(:,2)));
+        [xobs,yobs] = circle(obs_bound(i,1),obs_bound(i,2),obs_bound(i,3));
+%         obs = [Xobs{i};Xobs{1}(1,:)];
+        [x1,y1] = (polyxpoly(current_track(:,1),current_track(:,3),xobs,yobs));
         if ~isempty([x1,y1])
             Lchanges = Lchanges + 1;
             disp('Lane Change!')
@@ -176,7 +177,7 @@ plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 %% Control Input to drive the car
 
 
-[Ufinal , Yfinal]=waypt_controller(final_track)
+% [Ufinal , Yfinal]=waypt_controller(final_track)
 % [Ufinal, Yfinal]=get_inputs_pid(final_track,final_input)
 % %% Plot final track
 % 
@@ -281,20 +282,31 @@ function [Ufinal , Yfinal]=get_inputs_pid(final_track,final_input)
         Ytemp = forwardIntegrateControlInput([u;u], Yfinal(i-1,:));
         Yfinal(i,:) = Ytemp(end,:);
         
-        plot(Yfinal(i-1:i,1),Yfina(i-1:i,3),'r','linewidth',1.5)
+        plot(Yfinal(i-1:i,1),Yfinal(i-1:i,3),'r','linewidth',1.5)
         pause(0.001);
     end
     
     disp('DONE !')
 end
 
-function circle(x,y,r)
+function draw_circle(x,y,r)
 %x and y are the coordinates of the center of the circle
 %r is the radius of the circle
 %0.01 is the angle step, bigger values will draw the circle faster but
 %you might notice imperfections (not very smooth)
-ang=0:0.01:2*pi; 
+ang=0:0.5:2*pi; 
 xp=r*cos(ang);
 yp=r*sin(ang);
 plot(x+xp,y+yp, 'k' ,'linewidth',3);
+end
+
+
+function [xp,yp]= circle(x,y,r)
+%x and y are the coordinates of the center of the circle
+%r is the radius of the circle
+%0.01 is the angle step, bigger values will draw the circle faster but
+%you might notice imperfections (not very smooth)
+ang=0:0.5:2*pi; 
+xp=x+r*cos(ang);
+yp=y+r*sin(ang);
 end
