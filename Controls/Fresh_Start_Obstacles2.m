@@ -8,13 +8,13 @@ clc
 load ('TestTrack.mat');
 load('Uref.mat');
 load('Yref.mat');
-load('U_left.mat');
-load('Y_left.mat');
+load('U_left_slow.mat');
+load('Y_left_slow.mat');
 load('U_right.mat');
 load('Y_right.mat');
 
 
-Nobs = 3; %based on Q1 results
+Nobs = 25; %based on Q1 results
 Xobs = generateRandomObstacles(Nobs, TestTrack);
 obs_bound = zeros(Nobs,3);
 
@@ -44,7 +44,7 @@ for i = 1:length(Xobs)
     tempx = [tempx;tempx(1,:)];
     
     plot(tempx(:,1),tempx(:,2),'g')
-    circle(obs_bound(i,1),obs_bound(i,2),obs_bound(i,3))
+    draw_circle(obs_bound(i,1),obs_bound(i,2),obs_bound(i,3))
     
     
 end
@@ -112,8 +112,8 @@ end
 
 clc
 Lchanges = 0;
-backsteps_curr = 500;
-backsteps_new = 250;
+backsteps_curr = 200;
+backsteps_new = 40;
 npts = 50;
 pt = zeros(backsteps_curr-backsteps_new+1,6);
 current_track = Y_left;
@@ -177,7 +177,15 @@ plot(final_track(:,1),final_track(:,3),'k','linewidth',1.5)
 %% Control Input to drive the car
 
 
-% [Ufinal , Yfinal]=waypt_controller(final_track)
+[Ufinal , Yfinal]=waypt_controller(final_track);
+%%
+[~,indx_inpt] = find(Ufinal(:,1) ~= 0);
+length(indx_inpt)
+[intg_Y, T] = forwardIntegrateControlInput(Ufinal(1:length(indx_inpt),:));
+
+hold on
+plot(intg_Y(:,1),intg_Y(:,3),'g','linewidth',1.5)
+
 % [Ufinal, Yfinal]=get_inputs_pid(final_track,final_input)
 % %% Plot final track
 % 
@@ -198,37 +206,61 @@ function [Ufinal , Yfinal]=waypt_controller(final_track)
     
     pos_tolerance = 1.0;
     K_pos = 20;
-    K_orient = 1.0;
+    K_orient = 3.0;
     
     endtrack = false;
-    trgt_indx = 50; 
+    trgt_indx = 20; 
     ctrl_indx = 1;
+    counter = 1;
     
     while (~endtrack)
         
         refpos  = final_track(trgt_indx, [1,3]);
-        refagl  = atan2(final_track(trgt_indx, 3)- Yfinal(ctrl_indx,3),final_track(trgt_indx, 1)- Yfinal(ctrl_indx,1));
+        refagl  = atan2(final_track(trgt_indx, 3)- Yfinal(ctrl_indx,3),final_track(trgt_indx, 1)- Yfinal(ctrl_indx,1)+0.01);
         
         errpos  = norm(refpos - Yfinal(ctrl_indx,[1,3]));
+        errangl = refagl - Yfinal(ctrl_indx,5);
+        
+        if (abs(errangl) > 3 || abs(errpos) > 25)
+            errpos
+            refagl
+            errangl
+            dy = final_track(trgt_indx, 3)- Yfinal(ctrl_indx,3)
+            dx = final_track(trgt_indx, 1)- Yfinal(ctrl_indx,1)
+            car_orient = Yfinal(ctrl_indx,5)
+            input = u
+            hold on
+            plot(Yfinal(1:ctrl_indx,1),Yfinal(1:ctrl_indx,3),'r','linewidth',1.5)
+            disp('Problem ... Exiting !!')
+            break
+        end
         
         if(errpos <=  pos_tolerance)
-            disp('Achieved Target ! Moving to Next')
+%             disp('Achieved Target ! Moving to Next')
             trgt_indx = trgt_indx + 100;
             if (trgt_indx>size(final_track,1))
                 disp('Successfully Completed Track !')
                 endtrack = true;
             end
         end
-        errangl = refagl - Yfinal(ctrl_indx,5);
         
-        u = [  K_orient*errangl , min(K_pos*errpos,700) ];
+        
+        u = [  min(max(K_orient*errangl, -0.5), 0.5) , min(K_pos*errpos,600) ];
         Ufinal(ctrl_indx,:) = u;
+        
+        
         Ytemp = forwardIntegrateControlInput([u;u], Yfinal(ctrl_indx,:));
+        if (counter >= 1000)
+            disp('Performing Sanity Update')
+            counter = 0;
+            Ytemp = forwardIntegrateControlInput(Ufinal(1:ctrl_indx,:));
+        end
         ctrl_indx = ctrl_indx + 1;
         Yfinal(ctrl_indx,:) = Ytemp(end,:);
+        counter = counter + 1;
         
         hold on
-        plot(Yfinal(ctrl_indx-1:ctrl_indx,1),Yfinal(ctrl_indx-1:ctrl_indx,3),'r','linewidth',1.5)
+        plot(Yfinal(ctrl_indx-1:ctrl_indx,1),Yfinal(ctrl_indx-1:ctrl_indx,3),'g','linewidth',1.5)
         pause(0.001);
         
     end
@@ -279,11 +311,11 @@ function [Ufinal , Yfinal]=get_inputs_pid(final_track,final_input)
         u = Uref + du';  
         Ufinal(i-1,:) = u;
 %         Ufinal(i-1,1) = u-(Yfinal(i-1,4),Yfinal(i,4));
-        Ytemp = forwardIntegrateControlInput([u;u], Yfinal(i-1,:));
+        Ytemp = forwardIntegrateControlInput_2(u, Yfinal(i-1,:));
         Yfinal(i,:) = Ytemp(end,:);
         
-        plot(Yfinal(i-1:i,1),Yfinal(i-1:i,3),'r','linewidth',1.5)
-        pause(0.001);
+%         plot(Yfinal(i-1:i,1),Yfinal(i-1:i,3),'c','linewidth',1.5)
+%         pause(0.001);
     end
     
     disp('DONE !')
