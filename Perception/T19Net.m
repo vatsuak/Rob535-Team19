@@ -1,6 +1,12 @@
+%%Following code has been verified to work in MatLab R2018a using Deep Learning Toolbox and Deep Learning Toolbox model for VGG-19 Network
+
 %% Get the training images 
 allImages = imageDatastore('all/deploy/Image', 'IncludeSubfolders', true,...
     'LabelSource', 'foldernames');
+%%change 'all/deploy/Image' to the path of your training images. 
+%%The images have to be clasified to subfolders where the folder name is the label of each class
+
+
 [trainingImages, ~] = splitEachLabel(allImages, 0.8, 'randomize');
 
 %% Load pretrained VGG Net
