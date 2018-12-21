@@ -116,16 +116,16 @@ Requirements: software
 Preparation for Training
 1. Get the training images
 2. Store the training images in the folder 'all/deploy/trainval/*/*_image.jpg'
-2. Run T19TrainingImagesLoad.m file
+2. Run 'T19TrainingImagesLoad.m' file
 3. The sorted images are placed in the directory 'all/deploy/Image/'. 
 
 Training the Net
-1. Run T19.m file. Training will take about 1 hour to complete on a computer with a desktop GPU.
+1. Run T19.m file. Training will take about 1 hour to complete on a desktop with GPU.
 2. The variable 'myNet.m' holds the trained network.
 
 Preparation for Testing
 1. Place the test images in the folder 'all/deploy/Test'
-2. Run the T19TestImagesLoad.m file
+2. Run the 'T19TestImagesLoad.m' file
 
 Testing the Net
 1. Run T19Test.m file
