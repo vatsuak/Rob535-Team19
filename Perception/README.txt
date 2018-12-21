@@ -133,3 +133,14 @@ Testing the Net
 3. Copy and paste the contents of the variable into an excelworkbook and save it as "Results.csv".
 
 
+.............Folder organisation................
+Perception
+|-all
+  |-deploy
+    |-test
+    |-trainval
+|-T19Net.m
+|-T19Test.m
+|-T19TestImagesLoad.m
+|-T19TrainingImagesLoad.m
+
