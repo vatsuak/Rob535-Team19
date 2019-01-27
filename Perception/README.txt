@@ -4,20 +4,6 @@ Self Drving cars: Controls and Perception
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Team 19 Percepion project Readme
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
-
-
-
-Members:Shruti Ambekar, Mukundhan Narasimhan, Kaustav Chakraborty, Adheenthar Ragunathasamy, Swapnil Ghiya, Dhanush Dinesan, Mohieddine Amine, Henry Kim.
-
-
-
-
-
 &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
 
